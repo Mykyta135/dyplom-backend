@@ -27,7 +27,7 @@ import { databaseConfig, databaseSchema } from './config/database.config';
       imports: [ConfigModule],
       inject: [databaseConfig.KEY],
       useFactory: (databaseConfig_: ConfigType<typeof databaseConfig>) => ({
-        type: "postgres",
+        type: 'postgres',
         host: databaseConfig_.host,
         port: databaseConfig_.port,
         username: databaseConfig_.username,
@@ -41,4 +41,4 @@ import { databaseConfig, databaseSchema } from './config/database.config';
   controllers: [AppController],
   providers: [AppService],
 })
-export class AppModule { }
+export class AppModule {}
