@@ -6,25 +6,20 @@
   "private": true,
   "license": "UNLICENSED",
   "scripts": {
-    "// DEVELOPMENT //": "",
     "start": "nest start",
     "start:dev": "nest start --watch",
-    "start:debug": "nest start --debug --watch",
-    "// BUILDING & PRODUCTION //": "",
     "build": "nest build",
     "start:prod": "node dist/main",
-    "// LINTING & FORMATTING //": "",
-    "lint": "eslint \"{src,test}/**/*.ts\"",
-    "lint:fix": "eslint \"{src,test}/**/*.ts\" --fix",
-    "format": "prettier --write \"src/**/*.ts\"",
-    "// QUALITY GATES & COMPOSITE COMMANDS //": "",
+    "lint": "eslint \"{src,apps,libs,test}/**/*.ts\" --fix",
+    "test": "jest",
+    "test:changed": "jest --onlyChanged",
     "validate:staged": "lint-staged",
-    "build:clean": "npm run validate:staged && npm run build"
+    "build:clean": "rimraf dist && npm run build"
   },
   "lint-staged": {
     "*.ts": [
-      "prettier --write",
-      "eslint --fix"
+      "eslint --fix",
+      "prettier --write"
     ]
   },
   "dependencies": {
