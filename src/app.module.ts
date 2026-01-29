@@ -6,9 +6,12 @@ import * as Joi from 'joi';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 
+import { APP_GUARD } from '@nestjs/core';
+import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { appConfig, appSchema } from './config/app.config';
 import { authConfig, authSchema } from './config/auth.config';
 import { databaseConfig, databaseSchema } from './config/database.config';
+import { HealthModule } from './health/health.module';
 
 @Module({
   imports: [
@@ -37,8 +40,22 @@ import { databaseConfig, databaseSchema } from './config/database.config';
         synchronize: databaseConfig_.synchronize,
       }),
     }),
+
+    ThrottlerModule.forRoot([
+      {
+        ttl: 60000,
+        limit: 10,
+      },
+    ]),
+    HealthModule,
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [
+    AppService,
+    {
+      provide: APP_GUARD,
+      useClass: ThrottlerGuard,
+    },
+  ],
 })
 export class AppModule {}

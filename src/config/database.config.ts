@@ -7,7 +7,7 @@ export const databaseConfig = registerAs('database', () => ({
   username: process.env.DB_USERNAME,
   password: process.env.DB_PASSWORD,
   name: process.env.DB_DATABASE,
-  synchronize: process.env.NODE_ENV === 'development',
+  synchronize: false,
 }));
 
 export const databaseSchema = {
