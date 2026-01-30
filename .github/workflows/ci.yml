@@ -73,9 +73,9 @@ jobs:
         with:
           sizes: >
             {
-              "xs": { "color": "3CB371", "size": 15 },
-              "s": { "color": "98FB98", "size": 100 },
-              "m": { "color": "F0E68C", "size": 300 },
-              "l": { "color": "FFA500", "size": 800 },
-              "xl": { "color": "FF4500", "size": 10000 }
+              "size/XS": 20,
+              "size/S": 100,
+              "size/M": 300,
+              "size/L": 800,
+              "size/XL": 1000
             }
