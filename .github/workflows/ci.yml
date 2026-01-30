@@ -2,9 +2,9 @@ name: Aegis Guardian CI
 
 on:
   push:
-    branches: [main, develop]
+    branches: [main, dev]
   pull_request:
-    branches: [main, develop]
+    branches: [main, dev]
     types: [opened, synchronize, reopened]
 
 # Standard security practice: Give the GITHUB_TOKEN minimal permissions
@@ -62,13 +62,20 @@ jobs:
     name: Project Management Bots
     runs-on: ubuntu-latest
     if: github.event_name == 'pull_request'
+    permissions:
+      contents: read
+      pull-requests: write
     steps:
       - name: 🏷️ PR Size Labeler
-        # Helps reviewers by labeling PRs as XS, S, M, L, XL
         uses: pascalgn/size-label-action@v0.5.5
-        with:
+        env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          xs_max_size: '15'
-          s_max_size: '100'
-          m_max_size: '300'
-          l_max_size: '800'
+        with:
+          # This action uses 'sizes' as a JSON-like string
+          sizes: >
+            {
+              "size/XS": 20,
+              "size/S": 100,
+              "size/M": 300,
+              "size/L": 800
+            }
