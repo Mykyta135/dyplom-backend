@@ -65,7 +65,7 @@ jobs:
     steps:
       - name: 🏷️ PR Size Labeler
         # Helps reviewers by labeling PRs as XS, S, M, L, XL
-        uses: codelytv/pr-size-labeler-action@v1
+        uses: pascalgn/size-label-action@v0.5.5
         with:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           xs_max_size: '15'
