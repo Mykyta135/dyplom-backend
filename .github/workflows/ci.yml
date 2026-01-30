@@ -57,7 +57,7 @@ jobs:
           path: dist/
           retention-days: 7
 
-  # 🤖 AUTOMATION BOTS JOB
+  # 🤖 AUTOMATION BOTS JOB asd asd asd asd 
   aegis-automation:
     name: Project Management Bots
     runs-on: ubuntu-latest
