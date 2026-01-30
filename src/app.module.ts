@@ -8,35 +8,49 @@ import { AppService } from './app.service';
 
 import { appConfig, appSchema } from './config/app.config';
 import { authConfig, authSchema } from './config/auth.config';
-import { databaseConfig, databaseSchema } from './config/database.config';
+import {
+  databaseConfig,
+  databaseSchema,
+  redisConfig,
+  redisSchema,
+} from './config/database.config';
+
+import { CoreModule } from './core/core.module';
+import { HealthModule } from './health/health.module';
 
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
-      load: [appConfig, databaseConfig, authConfig],
-
+      load: [appConfig, databaseConfig, authConfig, redisConfig],
       validationSchema: Joi.object({
         ...appSchema,
         ...databaseSchema,
         ...authSchema,
+        ...redisSchema,
       }),
     }),
 
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
       inject: [databaseConfig.KEY],
-      useFactory: (databaseConfig_: ConfigType<typeof databaseConfig>) => ({
+      useFactory: (dbConfig: ConfigType<typeof databaseConfig>) => ({
         type: 'postgres',
-        host: databaseConfig_.host,
-        port: databaseConfig_.port,
-        username: databaseConfig_.username,
-        password: databaseConfig_.password,
-        database: databaseConfig_.name,
+        host: dbConfig.host,
+        port: dbConfig.port,
+        username: dbConfig.username,
+        password: dbConfig.password,
+        database: dbConfig.name,
+        retryAttempts: dbConfig.retryAttempts,
+        retryDelay: dbConfig.retryDelay,
         autoLoadEntities: true,
-        synchronize: databaseConfig_.synchronize,
+        synchronize: false,
+        migrations: ['dist/migrations/*{.ts,.js}'],
       }),
     }),
+
+    CoreModule,
+    HealthModule,
   ],
   controllers: [AppController],
   providers: [AppService],
