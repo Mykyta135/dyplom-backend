@@ -6,9 +6,10 @@ import {
   RequestMethod,
 } from '@nestjs/common';
 import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
-import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
+import { ThrottlerModule } from '@nestjs/throttler';
 import { AllExceptionsFilter } from 'src/core/filters/http-exception.filter';
 import { InfrastructureTestController } from './controllers/infrastructure-test.controller';
+import { MetricsExemptThrottlerGuard } from './guards/throttler-behind-proxy.guard';
 import { CircuitBreakerInterceptor } from './interceptor/circut-breaker.interceptor';
 import { EtagInterceptor } from './interceptor/etag.interceptor';
 import { LoggingInterceptor } from './interceptor/logging.interceptor';
@@ -16,14 +17,14 @@ import { NullStripperInterceptor } from './interceptor/null-stripper.interceptor
 import { TimeoutInterceptor } from './interceptor/timeout.interceptor';
 import { TransformInterceptor } from './interceptor/transform.interceptor';
 import { CorrelationIdMiddleware } from './middleware/correlation-id.middleware';
-import { ResponseTimeMiddleware } from './middleware/response-time.middleware';
+import { SanitizerInterceptor } from './interceptor/sanitizer.interceptor';
 
 @Module({
   imports: [
     ThrottlerModule.forRoot([
       {
-        ttl: 60000, // 1 minute
-        limit: 10, // 10 requests per minute
+        ttl: 60000,
+        limit: 15,
       },
     ]),
   ],
@@ -33,14 +34,17 @@ import { ResponseTimeMiddleware } from './middleware/response-time.middleware';
       provide: APP_FILTER,
       useClass: AllExceptionsFilter,
     },
-
     // --- GUARDS ---
+    MetricsExemptThrottlerGuard,
     {
       provide: APP_GUARD,
-      useClass: ThrottlerGuard,
+      useClass: MetricsExemptThrottlerGuard,
     },
-
-    // --- INTERCEPTORS (Execution order: Top to Bottom) ---
+    // --- INTERCEPTORS ---
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: SanitizerInterceptor,
+    },
     {
       provide: APP_INTERCEPTOR,
       useClass: TimeoutInterceptor,
@@ -76,7 +80,7 @@ import { ResponseTimeMiddleware } from './middleware/response-time.middleware';
 export class CoreModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
     consumer
-      .apply(CorrelationIdMiddleware, ResponseTimeMiddleware)
+      .apply(CorrelationIdMiddleware)
       .forRoutes({ path: '*', method: RequestMethod.ALL });
   }
 }

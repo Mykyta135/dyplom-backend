@@ -5,31 +5,52 @@ import {
   Logger,
   NestInterceptor,
 } from '@nestjs/common';
-import { Response } from 'express';
-import { Observable } from 'rxjs';
-import { tap } from 'rxjs/operators';
-import { RequestWithCorrelationId } from '../middleware/correlation-id.middleware';
+import { Request, Response } from 'express';
+import { Span, Tags, Tracer } from 'opentracing'; // Added Tracer here
+import { catchError, Observable, tap } from 'rxjs';
+import { tracer } from '../../tracing';
 
 @Injectable()
-export class LoggingInterceptor implements NestInterceptor {
+export class LoggingInterceptor implements NestInterceptor<unknown, unknown> {
   private readonly logger = new Logger('HTTP');
 
   intercept(context: ExecutionContext, next: CallHandler): Observable<unknown> {
     const ctx = context.switchToHttp();
-    const request = ctx.getRequest<RequestWithCorrelationId>();
-    const { method, url, correlationId } = request;
+    const req = ctx.getRequest<Request>();
+    const res = ctx.getResponse<Response>();
+
+    // FIX: Cast tracer explicitly to the 'Tracer' type locally
+    // This tells ESLint: "I promise this is a Tracer object with a startSpan method"
+    const jaegerTracer = tracer as Tracer;
+    const span: Span = jaegerTracer.startSpan(`${req.method} ${req.path}`);
+
+    span.setTag(Tags.HTTP_METHOD, req.method);
+    span.setTag(Tags.HTTP_URL, req.url);
+    span.setTag('ip', req.ip ?? 'unknown');
+
     const now = Date.now();
 
     return next.handle().pipe(
       tap(() => {
-        const response = ctx.getResponse<Response>();
-        const statusCode = String(response.statusCode);
-        const delay = String(Date.now() - now);
-        const safeCorrelationId = correlationId ?? 'N/A';
+        const delay = Date.now() - now;
+        const statusCode = res.statusCode;
+
+        span.setTag(Tags.HTTP_STATUS_CODE, statusCode);
+        span.finish();
 
         this.logger.log(
-          `[${safeCorrelationId}] ${method} ${url} ${statusCode} +${delay}ms`,
+          `${req.method} ${req.url} ${String(statusCode)} +${String(delay)}ms`,
         );
+      }),
+      catchError((err: Error) => {
+        span.setTag(Tags.ERROR, true);
+        span.log({
+          event: 'error',
+          message: err.message,
+          stack: err.stack ?? 'no-stack',
+        });
+        span.finish();
+        throw err;
       }),
     );
   }
