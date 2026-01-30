@@ -7,6 +7,7 @@ import {
   Logger,
 } from '@nestjs/common';
 import { HttpAdapterHost } from '@nestjs/core';
+import { Request } from 'express';
 import { sanitizeObject } from '../../common/utils/sanitizer.util';
 
 @Catch()
@@ -18,46 +19,75 @@ export class AllExceptionsFilter implements ExceptionFilter {
   catch(exception: unknown, host: ArgumentsHost): void {
     const { httpAdapter } = this.httpAdapterHost;
     const ctx = host.switchToHttp();
-    const request = ctx.getRequest<Record<string, unknown>>();
+    const request = ctx.getRequest<Request>();
 
     const correlationId = request.correlationId ?? 'N/A';
+    const method = request.method;
+    const path = String(httpAdapter.getRequestUrl(request));
+    const userAgent = request.get('user-agent') ?? 'unknown';
+    const ip = request.ip ?? request.socket.remoteAddress ?? 'unknown';
 
     const httpStatus =
       exception instanceof HttpException
         ? exception.getStatus()
         : HttpStatus.INTERNAL_SERVER_ERROR;
 
-    let exceptionResponse: unknown;
+    let errorDetail: Record<string, unknown> | string;
 
     if (exception instanceof HttpException) {
-      exceptionResponse = exception.getResponse();
+      const res = exception.getResponse();
+      errorDetail =
+        typeof res === 'object' ? (res as Record<string, unknown>) : res;
     } else if (exception instanceof Error) {
-      exceptionResponse = {
+      errorDetail = {
         message: exception.message,
-        stack: exception.stack,
+        name: exception.name,
       };
     } else {
-      exceptionResponse = { message: 'Internal server error' };
+      errorDetail = { message: 'An unexpected error occurred' };
     }
 
-    const path = String(httpAdapter.getRequestUrl(request));
-
     const responseBody = {
-      statusCode: httpStatus,
-      timestamp: new Date().toISOString(),
-      path: path,
-      correlationId: correlationId,
+      success: false,
+      data: null,
+      error:
+        typeof errorDetail === 'string'
+          ? { message: errorDetail }
+          : errorDetail,
+      meta: {
+        timestamp: new Date().toISOString(),
+        path,
+        method,
+        correlationId,
+        statusCode: httpStatus,
+      },
     };
 
-    const sanitizedLog = sanitizeObject(exceptionResponse);
+    // FIX 3: Cast sanitizeObject result to unknown/Record to avoid 'any'
+    const sanitizedError = sanitizeObject(errorDetail) as Record<
+      string,
+      unknown
+    >;
 
-    this.logger.error({
-      message: `Request failed at ${path}`,
-      status: httpStatus,
-      correlationId: correlationId,
-      error: sanitizedLog,
-      stack: exception instanceof Error ? exception.stack : undefined,
-    });
+    this.logger.error(
+      {
+        message: `[${correlationId}] ${method} ${path} - Status: ${String(httpStatus)}`,
+        ip,
+        userAgent,
+        error: sanitizedError,
+      },
+      exception instanceof Error ? exception.stack : undefined,
+    );
+
+    if (httpStatus === (HttpStatus.INTERNAL_SERVER_ERROR as number)) {
+      // FIX 4: Sanitize request.body safely
+      const sanitizedBody = sanitizeObject(
+        request.body as Record<string, unknown>,
+      );
+      this.logger.verbose(
+        `[${correlationId}] Payload: ${JSON.stringify(sanitizedBody)}`,
+      );
+    }
 
     httpAdapter.reply(ctx.getResponse(), responseBody, httpStatus);
   }
