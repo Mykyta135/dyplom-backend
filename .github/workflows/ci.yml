@@ -57,7 +57,7 @@ jobs:
           path: dist/
           retention-days: 7
 
-  # 🤖 AUTOMATION BOTS JOB asd asd asd asd 
+  # 🤖 AUTOMATION BOTS JOB asd asd asd asd
   aegis-automation:
     name: Project Management Bots
     runs-on: ubuntu-latest
@@ -70,3 +70,10 @@ jobs:
         uses: pascalgn/size-label-action@v0.5.5
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: 🛡️ Security Scan (Trivy)
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: 'aegis-api:${{ github.sha }}'
+          format: 'table'
+          exit-code: '1'
+          severity: 'CRITICAL,HIGH'
