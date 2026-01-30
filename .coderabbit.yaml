@@ -58,8 +58,3 @@ reviews:
 chat:
   enabled: true # Enables deep-dive discussions on specific PR lines
   reply_if_mentioned: true
-
-# Optional: Knowledge Base (If you have a project wiki or style guide)
-knowledge_base:
-  - "https://docs.nestjs.com/"
-  - "https://refactoring.guru/design-patterns"
