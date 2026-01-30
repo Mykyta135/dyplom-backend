@@ -71,11 +71,11 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          # This action uses 'sizes' as a JSON-like string
           sizes: >
             {
-              "size/XS": 20,
-              "size/S": 100,
-              "size/M": 300,
-              "size/L": 800
+              "xs": { "color": "3CB371", "size": 15 },
+              "s": { "color": "98FB98", "size": 100 },
+              "m": { "color": "F0E68C", "size": 300 },
+              "l": { "color": "FFA500", "size": 800 },
+              "xl": { "color": "FF4500", "size": 10000 }
             }
