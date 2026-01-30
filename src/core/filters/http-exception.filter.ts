@@ -7,7 +7,7 @@ import {
   Logger,
 } from '@nestjs/common';
 import { HttpAdapterHost } from '@nestjs/core';
-import { sanitizeObject } from '../utils/sanitizer.util';
+import { sanitizeObject } from '../../common/utils/sanitizer.util';
 
 @Catch()
 export class AllExceptionsFilter implements ExceptionFilter {

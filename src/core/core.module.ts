@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
 import { APP_FILTER, APP_GUARD, HttpAdapterHost } from '@nestjs/core';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
-import { AllExceptionsFilter } from 'src/common/filters/http-exception.filter';
+import { AllExceptionsFilter } from 'src/core/filters/http-exception.filter';
 
 @Module({
   imports: [
