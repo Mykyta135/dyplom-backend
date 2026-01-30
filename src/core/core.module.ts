@@ -8,6 +8,7 @@ import {
 import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { AllExceptionsFilter } from 'src/core/filters/http-exception.filter';
+import { InfrastructureTestController } from './controllers/infrastructure-test.controller';
 import { CircuitBreakerInterceptor } from './interceptor/circut-breaker.interceptor';
 import { EtagInterceptor } from './interceptor/etag.interceptor';
 import { LoggingInterceptor } from './interceptor/logging.interceptor';
@@ -15,6 +16,7 @@ import { NullStripperInterceptor } from './interceptor/null-stripper.interceptor
 import { TimeoutInterceptor } from './interceptor/timeout.interceptor';
 import { TransformInterceptor } from './interceptor/transform.interceptor';
 import { CorrelationIdMiddleware } from './middleware/correlation-id.middleware';
+import { ResponseTimeMiddleware } from './middleware/response-time.middleware';
 
 @Module({
   imports: [
@@ -68,11 +70,13 @@ import { CorrelationIdMiddleware } from './middleware/correlation-id.middleware'
       useClass: EtagInterceptor,
     },
   ],
+  exports: [],
+  controllers: [InfrastructureTestController],
 })
 export class CoreModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
     consumer
-      .apply(CorrelationIdMiddleware)
+      .apply(CorrelationIdMiddleware, ResponseTimeMiddleware)
       .forRoutes({ path: '*', method: RequestMethod.ALL });
   }
 }
