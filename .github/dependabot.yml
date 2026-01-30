@@ -1,0 +1,11 @@
+version: 2
+updates:
+  - package-ecosystem: "npm" # Scans your package.json
+    directory: "/" 
+    schedule:
+      interval: "weekly" # Checks for updates every week
+    open-pull-requests-limit: 10 # Prevents the bot from spamming you
+    groups:
+      dependencies: # Groups minor updates together to keep your PR list clean
+        patterns:
+          - "*"
