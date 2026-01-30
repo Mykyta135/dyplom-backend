@@ -7,7 +7,7 @@ import {
   Logger,
 } from '@nestjs/common';
 import { HttpAdapterHost } from '@nestjs/core';
-import { sanitizeObject } from '../utils/sanitizer.util';
+import { sanitizeObject } from '../../common/utils/sanitizer.util';
 
 @Catch()
 export class AllExceptionsFilter implements ExceptionFilter {
@@ -18,6 +18,9 @@ export class AllExceptionsFilter implements ExceptionFilter {
   catch(exception: unknown, host: ArgumentsHost): void {
     const { httpAdapter } = this.httpAdapterHost;
     const ctx = host.switchToHttp();
+    const request = ctx.getRequest<Record<string, unknown>>();
+
+    const correlationId = request.correlationId ?? 'N/A';
 
     const httpStatus =
       exception instanceof HttpException
@@ -29,12 +32,13 @@ export class AllExceptionsFilter implements ExceptionFilter {
     if (exception instanceof HttpException) {
       exceptionResponse = exception.getResponse();
     } else if (exception instanceof Error) {
-      exceptionResponse = { message: exception.message };
+      exceptionResponse = {
+        message: exception.message,
+        stack: exception.stack,
+      };
     } else {
       exceptionResponse = { message: 'Internal server error' };
     }
-
-    const request = ctx.getRequest<Record<string, unknown>>();
 
     const path = String(httpAdapter.getRequestUrl(request));
 
@@ -42,13 +46,18 @@ export class AllExceptionsFilter implements ExceptionFilter {
       statusCode: httpStatus,
       timestamp: new Date().toISOString(),
       path: path,
+      correlationId: correlationId,
     };
 
     const sanitizedLog = sanitizeObject(exceptionResponse);
-    const statusString = String(httpStatus);
-    const errorString = JSON.stringify(sanitizedLog);
 
-    this.logger.error(`Status: ${statusString} Error: ${errorString}`);
+    this.logger.error({
+      message: `Request failed at ${path}`,
+      status: httpStatus,
+      correlationId: correlationId,
+      error: sanitizedLog,
+      stack: exception instanceof Error ? exception.stack : undefined,
+    });
 
     httpAdapter.reply(ctx.getResponse(), responseBody, httpStatus);
   }

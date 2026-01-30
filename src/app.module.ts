@@ -8,19 +8,26 @@ import { AppService } from './app.service';
 
 import { appConfig, appSchema } from './config/app.config';
 import { authConfig, authSchema } from './config/auth.config';
-import { databaseConfig, databaseSchema } from './config/database.config';
+import {
+  databaseConfig,
+  databaseSchema,
+  redisConfig,
+  redisSchema,
+} from './config/database.config';
 
 import { CoreModule } from './core/core.module';
+import { HealthModule } from './health/health.module';
 
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
-      load: [appConfig, databaseConfig, authConfig],
+      load: [appConfig, databaseConfig, authConfig, redisConfig],
       validationSchema: Joi.object({
         ...appSchema,
         ...databaseSchema,
         ...authSchema,
+        ...redisSchema,
       }),
     }),
 
@@ -34,6 +41,8 @@ import { CoreModule } from './core/core.module';
         username: dbConfig.username,
         password: dbConfig.password,
         database: dbConfig.name,
+        retryAttempts: dbConfig.retryAttempts,
+        retryDelay: dbConfig.retryDelay,
         autoLoadEntities: true,
         synchronize: false,
         migrations: ['dist/migrations/*{.ts,.js}'],
@@ -41,6 +50,7 @@ import { CoreModule } from './core/core.module';
     }),
 
     CoreModule,
+    HealthModule,
   ],
   controllers: [AppController],
   providers: [AppService],
