@@ -7,10 +7,9 @@ on:
     branches: [main, dev]
     types: [opened, synchronize, reopened]
 
-# Standard security practice: Give the GITHUB_TOKEN minimal permissions
 permissions:
   contents: read
-  pull-requests: write # Needed for the labeler bot
+  pull-requests: write
 
 jobs:
   aegis-core-pipeline:
@@ -21,28 +20,37 @@ jobs:
       - name: 🛡️ Checkout Aegis Code
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0 # Full history for better analysis
+          fetch-depth: 0
 
       - name: 🟢 Setup Node.js (v20)
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-          cache: 'npm' # High-speed dependency caching
+          cache: 'npm'
 
       - name: 📦 Clean Install Dependencies
         run: npm ci
 
       - name: 🔍 Security Audit (npm)
-        # Fails the build if any High or Critical vulnerabilities are found
         run: npm audit --audit-level=high
 
       - name: 🧹 Lint Check
-        # Ensures clean code and catches "any" usage
         run: npm run lint
 
       - name: 🏗️ Production Build
-        # Verifies that NestJS can actually compile
         run: npm run build
+
+      - name: 🐳 Build Docker Image for Analysis
+        run: |
+          docker build -t aegis-api:${{ github.sha }} -f backend/Dockerfile ./backend
+
+      - name: 🛡️ Security Scan (Trivy)
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: 'aegis-api:${{ github.sha }}'
+          format: 'table'
+          exit-code: '1'
+          severity: 'CRITICAL,HIGH'
 
       - name: 📏 Build Size Report
         run: |
@@ -50,14 +58,12 @@ jobs:
           du -sh dist/ >> $GITHUB_STEP_SUMMARY
 
       - name: 📁 Archive Build Artifact
-        # Saves the compiled JS as a downloadable zip on GitHub
         uses: actions/upload-artifact@v4
         with:
           name: aegis-production-bundle
           path: dist/
           retention-days: 7
 
-  # 🤖 AUTOMATION BOTS JOB asd asd asd asd
   aegis-automation:
     name: Project Management Bots
     runs-on: ubuntu-latest
@@ -70,10 +76,3 @@ jobs:
         uses: pascalgn/size-label-action@v0.5.5
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - name: 🛡️ Security Scan (Trivy)
-        uses: aquasecurity/trivy-action@master
-        with:
-          image-ref: 'aegis-api:${{ github.sha }}'
-          format: 'table'
-          exit-code: '1'
-          severity: 'CRITICAL,HIGH'
