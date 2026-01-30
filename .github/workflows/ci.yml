@@ -15,21 +15,25 @@ jobs:
   aegis-core-pipeline:
     name: Build & Security Audit
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./backend
 
     steps:
-      - name: 🛡️ Checkout Aegis Code
+      - name: 🛡️ Checkout Code
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: 🟢 Setup Node.js (v20)
+      - name: 🟢 Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
           cache: 'npm'
+          cache-dependency-path: './backend/package-lock.json'
 
-      - name: 📦 Clean Install Dependencies
-        run: npm ci
+      - name: 📦 Install Deps
+        run: npm ci --ignore-scripts
 
       - name: 🔍 Security Audit (npm)
         run: npm audit --audit-level=high
@@ -40,9 +44,9 @@ jobs:
       - name: 🏗️ Production Build
         run: npm run build
 
-      - name: 🐳 Build Docker Image for Analysis
-        run: |
-          docker build -t aegis-api:${{ github.sha }} -f backend/Dockerfile ./backend
+      - name: 🐳 Build Docker Image
+        working-directory: .
+        run: docker build -t aegis-api:${{ github.sha }} -f backend/Dockerfile ./backend
 
       - name: 🛡️ Security Scan (Trivy)
         uses: aquasecurity/trivy-action@master
