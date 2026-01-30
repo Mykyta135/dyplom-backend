@@ -10,7 +10,7 @@ import {
 } from '@nestjs/terminus';
 import { redisConfig } from 'src/config/database.config';
 
-@ApiTags('System Health') // FIX: Linter error 13:8
+@ApiTags('System Health')
 @Controller('health')
 export class HealthController {
   constructor(
