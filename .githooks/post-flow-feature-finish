@@ -1,0 +1,20 @@
+#!/bin/sh
+#
+# This hook is managed by Husky and executed by 'git flow feature finish'.
+# It runs from the project root ('backend')
+#
+
+echo "--- [Husky/Git Flow Hook]: Running post-feature-finish build check ---"
+
+# Run the build command directly
+npm run build
+
+# Check the exit code of the last command
+if [ $? -ne 0 ]; then
+  echo "--- [Husky/Git Flow Hook]: BUILD FAILED! The feature was merged, but the build has errors. Please check immediately. ---"
+  exit 1 # Exit with a non-zero status to indicate failure
+else
+  echo "--- [Husky/Git Flow Hook]: Build successful. ---"
+fi
+
+exit 0
