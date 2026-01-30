@@ -24,7 +24,7 @@ export class HealthController {
   @Get()
   @HealthCheck()
   @ApiOperation({ summary: 'Check API and infrastructure status' })
-  @ApiOkResponse({ description: 'The health check has passed' }) // FIX: Linter error 22:3
+  @ApiOkResponse({ description: 'The health check has passed' })
   check() {
     return this.health.check([
       () => this.db.pingCheck('database'),
