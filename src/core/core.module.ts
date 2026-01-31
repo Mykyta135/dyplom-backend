@@ -18,6 +18,7 @@ import { TimeoutInterceptor } from './interceptor/timeout.interceptor';
 import { TransformInterceptor } from './interceptor/transform.interceptor';
 import { CorrelationIdMiddleware } from './middleware/correlation-id.middleware';
 import { SanitizerInterceptor } from './interceptor/sanitizer.interceptor';
+import { UnitOfWork } from './database/unit-of-work';
 
 @Module({
   imports: [
@@ -73,8 +74,9 @@ import { SanitizerInterceptor } from './interceptor/sanitizer.interceptor';
       provide: APP_INTERCEPTOR,
       useClass: EtagInterceptor,
     },
+    UnitOfWork,
   ],
-  exports: [],
+  exports: [UnitOfWork],
   controllers: [InfrastructureTestController],
 })
 export class CoreModule implements NestModule {
