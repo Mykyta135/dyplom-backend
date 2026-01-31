@@ -6,6 +6,13 @@ import { Request } from 'express';
 export class MetricsExemptThrottlerGuard extends ThrottlerGuard {
   private readonly logger = new Logger('ThrottlerGuard');
 
+  async canActivate(context: ExecutionContext): Promise<boolean> {
+    if (context.getType() !== 'http') {
+      return true;
+    }
+
+    return super.canActivate(context);
+  }
   // eslint-disable-next-line @typescript-eslint/require-await
   protected async shouldSkipConnectors(
     context: ExecutionContext,
@@ -23,11 +30,7 @@ export class MetricsExemptThrottlerGuard extends ThrottlerGuard {
 
     if (shouldSkip) {
       this.logger.verbose(
-        `[WHITELISTED] Path: ${path} | UA: ${userAgent} | IP: ${ip} | Result: SKIP THROTTLING ✅`,
-      );
-    } else {
-      this.logger.debug(
-        `[ENFORCING] Path: ${path} | IP: ${ip} | Result: APPLY LIMITS 🛡️`,
+        `[WHITELISTED] Path: ${path} | IP: ${ip} | Result: SKIP THROTTLING ✅`,
       );
     }
 

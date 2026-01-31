@@ -5,55 +5,64 @@ import {
   HttpException,
   HttpStatus,
   Logger,
+  Optional,
 } from '@nestjs/common';
 import { HttpAdapterHost } from '@nestjs/core';
 import { Request } from 'express';
 import { sanitizeObject } from '../../common/utils/sanitizer.util';
 
+interface RequestWithCorrelationId extends Request {
+  correlationId?: string;
+}
+
 @Catch()
 export class AllExceptionsFilter implements ExceptionFilter {
   private readonly logger = new Logger(AllExceptionsFilter.name);
 
-  constructor(private readonly httpAdapterHost: HttpAdapterHost) {}
+  constructor(@Optional() private readonly httpAdapterHost?: HttpAdapterHost) {}
 
   catch(exception: unknown, host: ArgumentsHost): void {
-    const { httpAdapter } = this.httpAdapterHost;
+    const contextType = host.getType();
+
+    if (contextType === 'http') {
+      this.handleHttpException(exception, host);
+    } else {
+      this.handleRpcException(exception, host);
+    }
+  }
+
+  private handleHttpException(exception: unknown, host: ArgumentsHost): void {
+    const adapter = this.httpAdapterHost?.httpAdapter;
+    if (!adapter) {
+      this.logger.error('HTTP Adapter not found in HTTP context.');
+      return;
+    }
+
     const ctx = host.switchToHttp();
-    const request = ctx.getRequest<Request>();
+    const request = ctx.getRequest<RequestWithCorrelationId>();
 
     const correlationId = request.correlationId ?? 'N/A';
     const method = request.method;
-    const path = String(httpAdapter.getRequestUrl(request));
+    const path = String(adapter.getRequestUrl(request));
     const userAgent = request.get('user-agent') ?? 'unknown';
-    const ip = request.ip ?? request.socket.remoteAddress ?? 'unknown';
+    const ip = request.ip;
 
     const httpStatus =
       exception instanceof HttpException
         ? exception.getStatus()
         : HttpStatus.INTERNAL_SERVER_ERROR;
 
-    let errorDetail: Record<string, unknown> | string;
+    const errorDetail = this.extractErrorDetail(exception);
 
-    if (exception instanceof HttpException) {
-      const res = exception.getResponse();
-      errorDetail =
-        typeof res === 'object' ? (res as Record<string, unknown>) : res;
-    } else if (exception instanceof Error) {
-      errorDetail = {
-        message: exception.message,
-        name: exception.name,
-      };
-    } else {
-      errorDetail = { message: 'An unexpected error occurred' };
-    }
+    const sanitizedError = sanitizeObject(errorDetail) as Record<
+      string,
+      unknown
+    >;
 
     const responseBody = {
       success: false,
       data: null,
-      error:
-        typeof errorDetail === 'string'
-          ? { message: errorDetail }
-          : errorDetail,
+      error: sanitizedError,
       meta: {
         timestamp: new Date().toISOString(),
         path,
@@ -62,12 +71,6 @@ export class AllExceptionsFilter implements ExceptionFilter {
         statusCode: httpStatus,
       },
     };
-
-    // FIX 3: Cast sanitizeObject result to unknown/Record to avoid 'any'
-    const sanitizedError = sanitizeObject(errorDetail) as Record<
-      string,
-      unknown
-    >;
 
     this.logger.error(
       {
@@ -79,16 +82,38 @@ export class AllExceptionsFilter implements ExceptionFilter {
       exception instanceof Error ? exception.stack : undefined,
     );
 
-    if (httpStatus === (HttpStatus.INTERNAL_SERVER_ERROR as number)) {
-      // FIX 4: Sanitize request.body safely
-      const sanitizedBody = sanitizeObject(
-        request.body as Record<string, unknown>,
-      );
-      this.logger.verbose(
-        `[${correlationId}] Payload: ${JSON.stringify(sanitizedBody)}`,
-      );
-    }
+    adapter.reply(ctx.getResponse(), responseBody, httpStatus);
+  }
 
-    httpAdapter.reply(ctx.getResponse(), responseBody, httpStatus);
+  private handleRpcException(exception: unknown, host: ArgumentsHost): void {
+    const errorDetail = this.extractErrorDetail(exception);
+    const sanitizedError = sanitizeObject(errorDetail) as Record<
+      string,
+      unknown
+    >;
+
+    const rpcData = host.switchToRpc().getData<unknown>();
+
+    this.logger.error(
+      {
+        message: `[WORKER ERROR] Microservice task failed`,
+        error: sanitizedError,
+        payload: sanitizeObject(rpcData),
+      },
+      exception instanceof Error ? exception.stack : undefined,
+    );
+  }
+
+  // Changed return type from 'any' to 'Record<string, unknown>'
+  private extractErrorDetail(exception: unknown): Record<string, unknown> {
+    if (exception instanceof HttpException) {
+      const res = exception.getResponse();
+      return typeof res === 'object'
+        ? (res as Record<string, unknown>)
+        : { message: res };
+    } else if (exception instanceof Error) {
+      return { message: exception.message, name: exception.name };
+    }
+    return { message: 'An unexpected error occurred' };
   }
 }

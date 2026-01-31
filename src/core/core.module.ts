@@ -9,16 +9,16 @@ import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { AllExceptionsFilter } from 'src/core/filters/http-exception.filter';
 import { InfrastructureTestController } from './controllers/infrastructure-test.controller';
+import { UnitOfWork } from './database/unit-of-work';
 import { MetricsExemptThrottlerGuard } from './guards/throttler-behind-proxy.guard';
 import { CircuitBreakerInterceptor } from './interceptor/circut-breaker.interceptor';
 import { EtagInterceptor } from './interceptor/etag.interceptor';
 import { LoggingInterceptor } from './interceptor/logging.interceptor';
 import { NullStripperInterceptor } from './interceptor/null-stripper.interceptor';
+import { SanitizerInterceptor } from './interceptor/sanitizer.interceptor';
 import { TimeoutInterceptor } from './interceptor/timeout.interceptor';
 import { TransformInterceptor } from './interceptor/transform.interceptor';
 import { CorrelationIdMiddleware } from './middleware/correlation-id.middleware';
-import { SanitizerInterceptor } from './interceptor/sanitizer.interceptor';
-import { UnitOfWork } from './database/unit-of-work';
 
 @Module({
   imports: [
@@ -41,7 +41,7 @@ import { UnitOfWork } from './database/unit-of-work';
       provide: APP_GUARD,
       useClass: MetricsExemptThrottlerGuard,
     },
-    // --- INTERCEPTORS ---
+    // --- INTERCEPTORS --
     {
       provide: APP_INTERCEPTOR,
       useClass: SanitizerInterceptor,
