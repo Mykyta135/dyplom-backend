@@ -1,5 +1,6 @@
 import { registerAs } from '@nestjs/config';
 import * as Joi from 'joi';
+import { SnakeNamingStrategy } from 'typeorm-naming-strategies';
 
 export const databaseConfig = registerAs('database', () => ({
   host: process.env.DB_HOST,
@@ -10,6 +11,34 @@ export const databaseConfig = registerAs('database', () => ({
   synchronize: false,
   retryAttempts: parseInt(process.env.DB_RETRY_ATTEMPTS ?? '5', 10),
   retryDelay: parseInt(process.env.DB_RETRY_DELAY ?? '3000', 10),
+  // Advanced Extra Configuration
+  extra: {
+    // 1. Connection Pool Tuning: Keep enough warm connections but don't bloat
+    max: parseInt(process.env.DB_POOL_MAX ?? '30', 10),
+    min: parseInt(process.env.DB_POOL_MIN ?? '10', 10),
+    idleTimeoutMillis: 10000, // Close idle connections after 10s
+    connectionTimeoutMillis: 5000, // Fail fast if we can't get a connection
+
+    // 2. Performance & Resilience Tuning
+    statement_timeout: 10000, // Kill queries taking > 10s
+    query_timeout: 10000,
+    application_name: 'aegis_api_server',
+  },
+
+  // 3. Automated Snake Case Mapping
+  // This converts "createdAt" in TS to "created_at" in Postgres automatically
+  namingStrategy: new SnakeNamingStrategy(),
+
+  // 4. Observability & Debugging
+  logging:
+    process.env.NODE_ENV === 'development'
+      ? ['query', 'error', 'warn']
+      : ['error'],
+  logger: 'advanced-console',
+  maxQueryExecutionTime: 2000, // Highlight queries slower than 2 seconds
+
+  // 5. SSL (Crucial for Production/Cloud DBs)
+  ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: false } : false,
 }));
 
 export const databaseSchema = {
@@ -20,6 +49,9 @@ export const databaseSchema = {
   DB_DATABASE: Joi.string().required(),
   DB_RETRY_ATTEMPTS: Joi.number().default(5),
   DB_RETRY_DELAY: Joi.number().default(3000),
+  DB_SSL: Joi.boolean().default(false),
+  DB_POOL_MAX: Joi.number().default(30),
+  DB_POOL_MIN: Joi.number().default(10),
 };
 
 export const redisSchema = {
