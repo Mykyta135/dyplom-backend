@@ -9,6 +9,12 @@ export class PaginationMetaDto {
   readonly hasNextPage: boolean;
 
   constructor(page: number, take: number, itemCount: number) {
+    if (take <= 0) {
+      throw new Error('take must be greater than 0');
+    }
+    if (page <= 0) {
+      throw new Error('page must be greater than 0');
+    }
     this.page = page;
     this.take = take;
     this.itemCount = itemCount;
