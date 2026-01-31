@@ -14,20 +14,23 @@ export class UnitOfWork {
 
   async runInTransaction<T>(work: () => Promise<T>): Promise<T> {
     const queryRunner = this.dataSource.createQueryRunner();
-    await queryRunner.connect();
-    await queryRunner.startTransaction();
-
-    return UnitOfWork.context.run(queryRunner.manager, async () => {
-      try {
-        const result = await work();
-        await queryRunner.commitTransaction();
-        return result;
-      } catch (error) {
-        await queryRunner.rollbackTransaction();
-        throw error;
-      } finally {
+    try {
+      await queryRunner.connect();
+      await queryRunner.startTransaction();
+      return await UnitOfWork.context.run(queryRunner.manager, async () => {
+        try {
+          const result = await work();
+          await queryRunner.commitTransaction();
+          return result;
+        } catch (error) {
+          await queryRunner.rollbackTransaction();
+          throw error;
+        }
+      });
+    } finally {
+      if (!queryRunner.isReleased) {
         await queryRunner.release();
       }
-    });
+    }
   }
 }

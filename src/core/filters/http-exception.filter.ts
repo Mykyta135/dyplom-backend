@@ -8,7 +8,9 @@ import {
   Optional,
 } from '@nestjs/common';
 import { HttpAdapterHost } from '@nestjs/core';
-import { Request } from 'express';
+import { RpcException } from '@nestjs/microservices';
+import { Request, Response } from 'express';
+import { Observable, throwError } from 'rxjs';
 import { sanitizeObject } from '../../common/utils/sanitizer.util';
 
 interface RequestWithCorrelationId extends Request {
@@ -21,14 +23,27 @@ export class AllExceptionsFilter implements ExceptionFilter {
 
   constructor(@Optional() private readonly httpAdapterHost?: HttpAdapterHost) {}
 
-  catch(exception: unknown, host: ArgumentsHost): void {
+  /**
+   * We use 'Observable<unknown> | undefined' to satisfy linters that
+   * forbid 'any' and forbid 'void' in unions.
+   */
+  catch(
+    exception: unknown,
+    host: ArgumentsHost,
+  ): Observable<unknown> | undefined {
     const contextType = host.getType();
 
     if (contextType === 'http') {
       this.handleHttpException(exception, host);
-    } else {
-      this.handleRpcException(exception, host);
+      return undefined; // Explicitly return undefined instead of void
     }
+
+    if (contextType === 'rpc') {
+      return this.handleRpcException(exception, host);
+    }
+
+    this.logger.error(`Unhandled context type: ${contextType}`);
+    return undefined;
   }
 
   private handleHttpException(exception: unknown, host: ArgumentsHost): void {
@@ -40,12 +55,13 @@ export class AllExceptionsFilter implements ExceptionFilter {
 
     const ctx = host.switchToHttp();
     const request = ctx.getRequest<RequestWithCorrelationId>();
+    const response = ctx.getResponse<Response>();
 
     const correlationId = request.correlationId ?? 'N/A';
     const method = request.method;
     const path = String(adapter.getRequestUrl(request));
     const userAgent = request.get('user-agent') ?? 'unknown';
-    const ip = request.ip;
+    const ip = request.ip ?? 'unknown';
 
     const httpStatus =
       exception instanceof HttpException
@@ -53,7 +69,6 @@ export class AllExceptionsFilter implements ExceptionFilter {
         : HttpStatus.INTERNAL_SERVER_ERROR;
 
     const errorDetail = this.extractErrorDetail(exception);
-
     const sanitizedError = sanitizeObject(errorDetail) as Record<
       string,
       unknown
@@ -82,10 +97,13 @@ export class AllExceptionsFilter implements ExceptionFilter {
       exception instanceof Error ? exception.stack : undefined,
     );
 
-    adapter.reply(ctx.getResponse(), responseBody, httpStatus);
+    adapter.reply(response, responseBody, httpStatus);
   }
 
-  private handleRpcException(exception: unknown, host: ArgumentsHost): void {
+  private handleRpcException(
+    exception: unknown,
+    host: ArgumentsHost,
+  ): Observable<unknown> {
     const errorDetail = this.extractErrorDetail(exception);
     const sanitizedError = sanitizeObject(errorDetail) as Record<
       string,
@@ -102,18 +120,31 @@ export class AllExceptionsFilter implements ExceptionFilter {
       },
       exception instanceof Error ? exception.stack : undefined,
     );
+
+    return throwError(() => new RpcException(sanitizedError));
   }
 
-  // Changed return type from 'any' to 'Record<string, unknown>'
   private extractErrorDetail(exception: unknown): Record<string, unknown> {
     if (exception instanceof HttpException) {
-      const res = exception.getResponse();
-      return typeof res === 'object'
-        ? (res as Record<string, unknown>)
-        : { message: res };
-    } else if (exception instanceof Error) {
+      const res: unknown = exception.getResponse();
+      if (typeof res === 'object' && res !== null) {
+        return res as Record<string, unknown>;
+      }
+      return { message: String(res) };
+    }
+
+    if (exception instanceof RpcException) {
+      const rpcError: unknown = exception.getError();
+      if (typeof rpcError === 'object' && rpcError !== null) {
+        return rpcError as Record<string, unknown>;
+      }
+      return { message: String(rpcError) };
+    }
+
+    if (exception instanceof Error) {
       return { message: exception.message, name: exception.name };
     }
+
     return { message: 'An unexpected error occurred' };
   }
 }
