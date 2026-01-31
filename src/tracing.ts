@@ -5,14 +5,19 @@ import {
   TracingOptions,
 } from 'jaeger-client';
 
+// Parse environment variables with defaults suitable for development
+const samplerType = process.env.JAEGER_SAMPLER_TYPE ?? 'const';
+const samplerParam = Number(process.env.JAEGER_SAMPLER_PARAM ?? 1);
+const logSpans = process.env.JAEGER_LOG_SPANS === 'true'; // Default to false in prod usually
+
 const config: TracingConfig = {
-  serviceName: 'aegis-backend',
+  serviceName: process.env.JAEGER_SERVICE_NAME ?? 'aegis-backend',
   sampler: {
-    type: 'const',
-    param: 1,
+    type: samplerType,
+    param: samplerParam,
   },
   reporter: {
-    logSpans: true,
+    logSpans: logSpans,
     collectorEndpoint:
       process.env.JAEGER_ENDPOINT ?? 'http://jaeger:14268/api/traces',
   },
