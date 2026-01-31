@@ -11,6 +11,8 @@ import { map, Observable } from 'rxjs';
 @Injectable()
 export class EtagInterceptor<T> implements NestInterceptor<T, T> {
   intercept(context: ExecutionContext, next: CallHandler<T>): Observable<T> {
+    if (context.getType() !== 'http') return next.handle();
+
     const res = context.switchToHttp().getResponse<Response>();
 
     return next.handle().pipe(

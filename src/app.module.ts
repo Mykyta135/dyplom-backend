@@ -21,6 +21,7 @@ import { AcceptLanguageResolver, I18nModule, QueryResolver } from 'nestjs-i18n';
 import path from 'path';
 import { CoreModule } from './core/core.module';
 import { HealthModule } from './health/health.module';
+import { AuditModule } from './audit/audit.module';
 
 @Module({
   imports: [
@@ -79,6 +80,7 @@ import { HealthModule } from './health/health.module';
 
     CoreModule,
     HealthModule,
+    AuditModule,
   ],
   controllers: [AppController],
   providers: [AppService],
