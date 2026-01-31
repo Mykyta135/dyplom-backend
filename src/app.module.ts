@@ -18,10 +18,10 @@ import {
 
 import { PrometheusModule } from '@willsoto/nestjs-prometheus';
 import { AcceptLanguageResolver, I18nModule, QueryResolver } from 'nestjs-i18n';
-import path from 'path';
+import * as path from 'path';
+import { AuditModule } from './audit/audit.module';
 import { CoreModule } from './core/core.module';
 import { HealthModule } from './health/health.module';
-import { AuditModule } from './audit/audit.module';
 
 @Module({
   imports: [
@@ -38,9 +38,11 @@ import { AuditModule } from './audit/audit.module';
     }),
     CacheModule.registerAsync({
       isGlobal: true,
-      useFactory: async () => ({
+      imports: [ConfigModule],
+      inject: [redisConfig.KEY],
+      useFactory: async (config: ConfigType<typeof redisConfig>) => ({
         store: await redisStore({
-          socket: { host: process.env.REDIS_HOST ?? 'localhost', port: 6379 },
+          socket: { host: config.host, port: config.port },
           ttl: 600,
         }),
       }),
