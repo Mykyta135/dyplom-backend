@@ -6,11 +6,11 @@ import {
   RequestMethod,
 } from '@nestjs/common';
 import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
-import { ThrottlerModule } from '@nestjs/throttler';
+import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
+import { Request } from 'express'; // 1. Import Request type
 import { AllExceptionsFilter } from 'src/core/filters/http-exception.filter';
 import { InfrastructureTestController } from './controllers/infrastructure-test.controller';
 import { UnitOfWork } from './database/unit-of-work';
-import { MetricsExemptThrottlerGuard } from './guards/throttler-behind-proxy.guard';
 import { CircuitBreakerInterceptor } from './interceptor/circut-breaker.interceptor';
 import { EtagInterceptor } from './interceptor/etag.interceptor';
 import { LoggingInterceptor } from './interceptor/logging.interceptor';
@@ -26,22 +26,29 @@ import { CorrelationIdMiddleware } from './middleware/correlation-id.middleware'
       {
         ttl: 60000,
         limit: 15,
+        skipIf: (context): boolean => {
+          const req = context.switchToHttp().getRequest<Request>();
+          const method: string = req.method;
+          const url: string = req.url;
+
+          const isMetricsEndpoint: boolean =
+            method === 'GET' &&
+            (url === '/metrics' || url.startsWith('/metrics?'));
+
+          return isMetricsEndpoint;
+        },
       },
     ]),
   ],
   providers: [
-    // --- FILTERS ---
+    {
+      provide: APP_GUARD,
+      useClass: ThrottlerGuard,
+    },
     {
       provide: APP_FILTER,
       useClass: AllExceptionsFilter,
     },
-    // --- GUARDS ---
-    MetricsExemptThrottlerGuard,
-    {
-      provide: APP_GUARD,
-      useClass: MetricsExemptThrottlerGuard,
-    },
-    // --- INTERCEPTORS --
     {
       provide: APP_INTERCEPTOR,
       useClass: SanitizerInterceptor,
