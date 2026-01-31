@@ -1,27 +1,44 @@
 import {
   Body,
+  CanActivate,
   Controller,
   Get,
+  Injectable,
   InternalServerErrorException,
+  NotFoundException,
   Post,
   Query,
+  UseGuards,
 } from '@nestjs/common';
 import { ApiExcludeController } from '@nestjs/swagger';
 import { Exclude } from 'class-transformer';
+
+@Injectable()
+export class NonProductionGuard implements CanActivate {
+  canActivate(): boolean {
+    const isProduction = process.env.NODE_ENV === 'production';
+    if (isProduction) {
+      throw new NotFoundException();
+    }
+    return true;
+  }
+}
+
 class TestResponseDto {
   message: string;
 
-  @Exclude() // This tells the interceptor to REMOVE this field
+  @Exclude()
   internalSecret: string;
 
   constructor(partial: Partial<TestResponseDto>) {
     Object.assign(this, partial);
   }
 }
-@ApiExcludeController() // Keep this out of your public API docs
+
+@ApiExcludeController()
 @Controller('dev/test')
+@UseGuards(NonProductionGuard)
 export class InfrastructureTestController {
-  // 1. Test Transform & NullStripper & ClassSerializer
   @Get('transform')
   testTransform() {
     return new TestResponseDto({
@@ -30,15 +47,12 @@ export class InfrastructureTestController {
     });
   }
 
-  // 2. Test TimeoutInterceptor
   @Get('timeout')
   async testTimeout() {
-    // Wait 6 seconds (1s longer than our 5s timeout)
     await new Promise((resolve) => setTimeout(resolve, 6000));
     return { message: 'This will never be reached' };
   }
 
-  // 3. Test CircuitBreaker & ExceptionFilter
   @Get('circuit-breaker')
   testCircuit(@Query('fail') fail: string) {
     if (fail === 'true') {
@@ -49,7 +63,6 @@ export class InfrastructureTestController {
 
   @Post('sanitize-test')
   testSanitization(@Body() body: Record<string, unknown>) {
-    // If the interceptor works, the <script> will be GONE before it gets here
     return {
       receivedBody: body,
       message: 'Check your terminal to see if the script was neutralized!',
