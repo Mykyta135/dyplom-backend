@@ -1,18 +1,12 @@
 import { Controller, Logger } from '@nestjs/common';
 import { EventPattern, Payload } from '@nestjs/microservices';
-import { ApiTags } from '@nestjs/swagger';
+import { ApiExcludeController } from '@nestjs/swagger'; // Added this
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { AuditLogEntity } from './audit-log.entity';
+import type { AuditLogEvent } from './audit.interceptor';
 
-interface AuditEventPayload {
-  trackingId: string;
-  action: string;
-  ip: string;
-  payload: unknown;
-}
-
-@ApiTags('Audit Worker')
+@ApiExcludeController()
 @Controller()
 export class AuditWorker {
   private readonly logger = new Logger(AuditWorker.name);
@@ -23,23 +17,37 @@ export class AuditWorker {
   ) {}
 
   @EventPattern('audit_log')
-  async handleAuditLog(@Payload() data: AuditEventPayload) {
-    this.logger.log(`[Worker] 📨 Received Audit Event: ${data.trackingId}`);
+  async handleAuditLog(@Payload() data: AuditLogEvent) {
+    const MAX_RETRIES = 3;
+    let attempt = 1;
 
-    try {
-      const log = this.repo.create({
-        trackingId: data.trackingId,
-        action: data.action,
-        ip: data.ip,
-        payload: data.payload,
-      });
-      await this.repo.save(log);
-      this.logger.log(`[Worker] ✅ Saved audit log to DB.`);
-    } catch (e) {
-      const errorMessage = e instanceof Error ? e.message : 'Unknown error';
-      this.logger.error(
-        `[Worker] ❌ Failed to save audit log: ${errorMessage}`,
-      );
+    while (attempt <= MAX_RETRIES) {
+      try {
+        const log = this.repo.create({
+          ...data,
+          timestamp: new Date(data.timestamp),
+        });
+        await this.repo.save(log);
+        this.logger.log(`[Worker] ✅ Saved audit log.`);
+        return;
+      } catch (e: unknown) {
+        // Changed to unknown for safety
+        if (attempt === MAX_RETRIES) {
+          // FIX: Explicitly cast numbers to String and check error type before accessing .stack
+          const stack = e instanceof Error ? e.stack : undefined;
+
+          this.logger.error(
+            `[Worker] 💀 CRITICAL: Dropped audit log [${data.trackingId}] after ${String(MAX_RETRIES)} attempts. Payload: ${JSON.stringify(data)}`,
+            stack,
+          );
+        } else {
+          this.logger.warn(
+            `[Worker] ⚠️ Save failed, retrying... (${String(attempt)}/${String(MAX_RETRIES)})`,
+          );
+          await new Promise((r) => setTimeout(r, 1000 * attempt));
+          attempt++;
+        }
+      }
     }
   }
 }
