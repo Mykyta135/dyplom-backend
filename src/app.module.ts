@@ -17,17 +17,17 @@ import {
 } from './config/database.config';
 
 import { PrometheusModule } from '@willsoto/nestjs-prometheus';
-import { CoreModule } from './core/core.module';
-import { HealthModule } from './health/health.module';
 import { AcceptLanguageResolver, I18nModule, QueryResolver } from 'nestjs-i18n';
 import path from 'path';
+import { CoreModule } from './core/core.module';
+import { HealthModule } from './health/health.module';
 
 @Module({
   imports: [
     I18nModule.forRoot({
       fallbackLanguage: 'en',
       loaderOptions: {
-        path: path.join(__dirname, '/i18n/'),
+        path: path.join(__dirname, '/i18n/'), // This is correct
         watch: true,
       },
       resolvers: [
