@@ -1,7 +1,9 @@
 import {
+  Body,
   Controller,
   Get,
   InternalServerErrorException,
+  Post,
   Query,
 } from '@nestjs/common';
 import { ApiExcludeController } from '@nestjs/swagger';
@@ -43,5 +45,14 @@ export class InfrastructureTestController {
       throw new InternalServerErrorException('Simulated Failure');
     }
     return { status: 'System is healthy' };
+  }
+
+  @Post('sanitize-test')
+  testSanitization(@Body() body: Record<string, unknown>) {
+    // If the interceptor works, the <script> will be GONE before it gets here
+    return {
+      receivedBody: body,
+      message: 'Check your terminal to see if the script was neutralized!',
+    };
   }
 }

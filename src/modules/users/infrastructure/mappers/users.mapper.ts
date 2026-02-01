@@ -1,5 +1,5 @@
 import { Users } from '../../domain/entities/users.entity';
-import { UsersOrmEntity } from '../persistence/entities/users.orm-entity';
+import { UsersOrmEntity } from '../persistence/entities/users.entity';
 
 export class UsersMapper {
   static toDomain(orm: UsersOrmEntity): Users {

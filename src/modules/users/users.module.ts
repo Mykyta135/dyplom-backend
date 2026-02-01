@@ -3,7 +3,7 @@ import { CqrsModule } from '@nestjs/cqrs';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { UsersRepositoryPort } from './domain/ports/users.repository.port';
 import { UsersController } from './infrastructure/api/controllers/users.controller';
-import { UsersOrmEntity } from './infrastructure/persistence/entities/users.orm-entity';
+import { UsersOrmEntity } from './infrastructure/persistence/entities/users.entity';
 import { UsersTypeOrmRepository } from './infrastructure/persistence/repositories/users-typeorm.repository';
 
 const CommandHandlers = [];

@@ -7,65 +7,33 @@ import {
 import { Request } from 'express';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
-
-interface PaginationMeta {
-  page: number;
-  take: number;
-  itemCount: number;
-  pageCount: number;
-  hasPreviousPage: boolean;
-  hasNextPage: boolean;
-}
-
-interface PaginatedData<T> {
-  data: T[];
-  meta: PaginationMeta;
-}
-
-export interface Response<T> {
-  success: boolean;
-  data: T;
-  meta: {
-    timestamp: string;
-    path: string;
-    pagination?: PaginationMeta;
-  };
-}
+import {
+  ApiResponseDto,
+  PaginatedResponseDto,
+} from '../../common/dto/response.dto';
 
 @Injectable()
 export class TransformInterceptor<T> implements NestInterceptor<
   T,
-  Response<T>
+  ApiResponseDto<T>
 > {
   intercept(
     context: ExecutionContext,
     next: CallHandler<T>,
-  ): Observable<Response<T>> {
+  ): Observable<ApiResponseDto<T>> {
+    if (context.getType() !== 'http')
+      return next.handle() as Observable<ApiResponseDto<T>>;
+
     const request = context.switchToHttp().getRequest<Request>();
 
     return next.handle().pipe(
-      map((data: T | PaginatedData<T>) => {
-        const isPaginated = this.isPaginated(data);
+      map((result: unknown) => {
+        if (result instanceof PaginatedResponseDto) {
+          return new ApiResponseDto(result.data as T, request.url, result.meta);
+        }
 
-        return {
-          success: true,
-          data: isPaginated ? data.data : data,
-          meta: {
-            timestamp: new Date().toISOString(),
-            path: request.url,
-            ...(isPaginated && { pagination: data.meta }),
-          },
-        } as Response<T>;
+        return new ApiResponseDto(result as T, request.url);
       }),
-    );
-  }
-
-  private isPaginated(data: unknown): data is PaginatedData<unknown> {
-    return (
-      data !== null &&
-      typeof data === 'object' &&
-      'data' in data &&
-      'meta' in data
     );
   }
 }
