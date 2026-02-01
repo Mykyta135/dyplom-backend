@@ -69,8 +69,10 @@ export class AuditInterceptor implements NestInterceptor {
             `[${trackingId}] Failed to emit audit event: ${errorMessage}`,
           );
         },
+        complete: () => {
+          this.logger.verbose(`[${trackingId}] -> Sent to Audit Queue`);
+        },
       });
-      this.logger.verbose(`[${trackingId}] -> Sent to Audit Queue`);
     }
 
     return next.handle();

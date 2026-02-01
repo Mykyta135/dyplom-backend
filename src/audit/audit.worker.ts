@@ -31,15 +31,14 @@ export class AuditWorker {
         this.logger.log(`[Worker] ✅ Saved audit log.`);
         return;
       } catch (e: unknown) {
-        // Changed to unknown for safety
         if (attempt === MAX_RETRIES) {
-          // FIX: Explicitly cast numbers to String and check error type before accessing .stack
           const stack = e instanceof Error ? e.stack : undefined;
 
           this.logger.error(
             `[Worker] 💀 CRITICAL: Dropped audit log [${data.trackingId}] after ${String(MAX_RETRIES)} attempts. Payload: ${JSON.stringify(data)}`,
             stack,
           );
+          return;
         } else {
           this.logger.warn(
             `[Worker] ⚠️ Save failed, retrying... (${String(attempt)}/${String(MAX_RETRIES)})`,
