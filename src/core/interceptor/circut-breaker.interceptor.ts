@@ -14,6 +14,9 @@ export class CircuitBreakerInterceptor implements NestInterceptor {
   private lastFailureTime = 0;
 
   intercept(context: ExecutionContext, next: CallHandler): Observable<unknown> {
+    if (context.getType() !== 'http') {
+      return next.handle();
+    }
     if (
       this.failureCount >= this.threshold &&
       Date.now() - this.lastFailureTime < 30000

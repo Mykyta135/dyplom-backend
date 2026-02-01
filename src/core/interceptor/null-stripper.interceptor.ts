@@ -12,6 +12,9 @@ export class NullStripperInterceptor implements NestInterceptor {
     _context: ExecutionContext,
     next: CallHandler,
   ): Observable<unknown> {
+    if (_context.getType() !== 'http') {
+      return next.handle();
+    }
     return next.handle().pipe(map((data) => this.removeNulls(data)));
   }
 

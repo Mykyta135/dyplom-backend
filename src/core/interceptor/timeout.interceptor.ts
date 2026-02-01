@@ -14,6 +14,9 @@ export class TimeoutInterceptor implements NestInterceptor {
     _context: ExecutionContext,
     next: CallHandler,
   ): Observable<unknown> {
+    if (_context.getType() !== 'http') {
+      return next.handle();
+    }
     return next.handle().pipe(
       timeout(5000),
       catchError((err: unknown) => {

@@ -14,6 +14,10 @@ export class SanitizerInterceptor implements NestInterceptor {
   private readonly logger = new Logger('Sanitizer');
 
   intercept(context: ExecutionContext, next: CallHandler): Observable<unknown> {
+    if (context.getType() !== 'http') {
+      return next.handle();
+    }
+
     const request = context
       .switchToHttp()
       .getRequest<Record<string, unknown>>();

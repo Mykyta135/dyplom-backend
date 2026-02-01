@@ -20,11 +20,47 @@ import { PrometheusModule } from '@willsoto/nestjs-prometheus';
 import { AcceptLanguageResolver, I18nModule, QueryResolver } from 'nestjs-i18n';
 import * as path from 'path';
 import { AuditModule } from './audit/audit.module';
-import { CoreModule } from './core/core.module';
+import { CoreModule, HttpCoreModule } from './core/core.module';
 import { HealthModule } from './health/health.module';
+
+const isWorker = process.env.APP_MODE === 'WORKER';
 
 @Module({
   imports: [
+    ConfigModule.forRoot({
+      isGlobal: true,
+      load: [appConfig, databaseConfig, authConfig, redisConfig],
+      validationSchema: Joi.object({
+        ...appSchema,
+        ...databaseSchema,
+        ...authSchema,
+        ...redisSchema,
+      }),
+    }),
+    TypeOrmModule.forRootAsync({
+      imports: [ConfigModule],
+      inject: [databaseConfig.KEY],
+      useFactory: (dbConfig: ConfigType<typeof databaseConfig>) => ({
+        type: 'postgres',
+        host: dbConfig.host,
+        port: dbConfig.port,
+        username: dbConfig.username,
+        password: dbConfig.password,
+        database: dbConfig.name,
+        retryAttempts: dbConfig.retryAttempts,
+        retryDelay: dbConfig.retryDelay,
+        autoLoadEntities: true,
+        synchronize: false,
+        migrations: ['dist/migrations/*{.ts,.js}'],
+      }),
+    }),
+    CoreModule,
+
+    ...(isWorker ? [] : [HttpCoreModule]),
+
+    HealthModule,
+    AuditModule,
+
     I18nModule.forRoot({
       fallbackLanguage: 'en',
       loaderOptions: {
@@ -47,42 +83,8 @@ import { HealthModule } from './health/health.module';
         }),
       }),
     }),
-    PrometheusModule.register({
-      path: '/metrics',
-      defaultMetrics: { enabled: true },
-    }),
-    ConfigModule.forRoot({
-      isGlobal: true,
-      load: [appConfig, databaseConfig, authConfig, redisConfig],
-      validationSchema: Joi.object({
-        ...appSchema,
-        ...databaseSchema,
-        ...authSchema,
-        ...redisSchema,
-      }),
-    }),
 
-    TypeOrmModule.forRootAsync({
-      imports: [ConfigModule],
-      inject: [databaseConfig.KEY],
-      useFactory: (dbConfig: ConfigType<typeof databaseConfig>) => ({
-        type: 'postgres',
-        host: dbConfig.host,
-        port: dbConfig.port,
-        username: dbConfig.username,
-        password: dbConfig.password,
-        database: dbConfig.name,
-        retryAttempts: dbConfig.retryAttempts,
-        retryDelay: dbConfig.retryDelay,
-        autoLoadEntities: true,
-        synchronize: false,
-        migrations: ['dist/migrations/*{.ts,.js}'],
-      }),
-    }),
-
-    CoreModule,
-    HealthModule,
-    AuditModule,
+    ...(isWorker ? [] : [PrometheusModule.register({ path: '/metrics' })]),
   ],
   controllers: [AppController],
   providers: [AppService],

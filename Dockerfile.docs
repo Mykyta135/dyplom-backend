@@ -5,16 +5,15 @@ RUN addgroup -S app && adduser -S app -G app
 WORKDIR /app
 # 3. Copy package files
 COPY package*.json ./
-# 4. Disable Husky without skipping all lifecycle scripts
-ENV HUSKY=0
-RUN npm install --legacy-peer-deps
+# 4. FIX: Use --ignore-scripts to skip Husky/Git hooks during Docker build
+# Use --legacy-peer-deps for NestJS 11 compatibility
+RUN npm install --ignore-scripts --legacy-peer-deps
 # 5. Copy the rest of the source code (now .githooks etc are here)
 COPY --chown=app:app . .
 # 6. Generate the documentation
 RUN npx `@compodoc/compodoc` -p tsconfig.json
 # 7. Install a tiny web server
-ARG HTTP_SERVER_VERSION=14.1.1
-RUN npm install -g http-server@${HTTP_SERVER_VERSION}
+RUN npm install -g http-server
 USER app
 EXPOSE 8080
 CMD ["http-server", "documentation", "-p", "8080"]

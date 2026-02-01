@@ -16,7 +16,7 @@ export class AuditLogEntity {
   @Column()
   action: string;
 
-  @Column({ nullable: true })
+  @Column({ type: 'inet', nullable: true })
   ip: string | null;
 
   @Column({ type: 'jsonb', nullable: true })

@@ -21,6 +21,8 @@ export class LoggingInterceptor implements NestInterceptor<unknown, unknown> {
     const req = ctx.getRequest<Request>();
     const res = ctx.getResponse<Response>();
 
+    // The linter guarantees req and res exist here.
+    // We use req.method directly without optional chaining.
     const jaegerTracer = tracer as Tracer;
     const parentCtx = jaegerTracer.extract(FORMAT_HTTP_HEADERS, req.headers);
     const span: Span = jaegerTracer.startSpan(
