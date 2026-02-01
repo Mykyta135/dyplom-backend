@@ -6,7 +6,7 @@ import {
   NestInterceptor,
 } from '@nestjs/common';
 import { Request, Response } from 'express';
-import { Span, Tags, Tracer } from 'opentracing'; // Added Tracer here
+import { FORMAT_HTTP_HEADERS, Span, Tags, Tracer } from 'opentracing';
 import { catchError, Observable, tap } from 'rxjs';
 import { tracer } from '../../tracing';
 
@@ -21,14 +21,17 @@ export class LoggingInterceptor implements NestInterceptor<unknown, unknown> {
     const req = ctx.getRequest<Request>();
     const res = ctx.getResponse<Response>();
 
-    // FIX: Cast tracer explicitly to the 'Tracer' type locally
-    // This tells ESLint: "I promise this is a Tracer object with a startSpan method"
+    // The linter guarantees req and res exist here.
+    // We use req.method directly without optional chaining.
     const jaegerTracer = tracer as Tracer;
-    const span: Span = jaegerTracer.startSpan(`${req.method} ${req.path}`);
+    const parentCtx = jaegerTracer.extract(FORMAT_HTTP_HEADERS, req.headers);
+    const span: Span = jaegerTracer.startSpan(
+      `${req.method} ${req.path}`,
+      parentCtx ? { childOf: parentCtx } : undefined,
+    );
 
     span.setTag(Tags.HTTP_METHOD, req.method);
-    span.setTag(Tags.HTTP_URL, req.url);
-    span.setTag('ip', req.ip ?? 'unknown');
+    span.setTag(Tags.HTTP_URL, req.path);
 
     const now = Date.now();
 
@@ -41,7 +44,7 @@ export class LoggingInterceptor implements NestInterceptor<unknown, unknown> {
         span.finish();
 
         this.logger.log(
-          `${req.method} ${req.url} ${String(statusCode)} +${String(delay)}ms`,
+          `${req.method} ${req.path} ${String(statusCode)} +${String(delay)}ms`,
         );
       }),
       catchError((err: Error) => {

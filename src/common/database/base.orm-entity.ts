@@ -1,10 +1,10 @@
 import {
-  PrimaryGeneratedColumn,
-  CreateDateColumn,
-  UpdateDateColumn,
-  DeleteDateColumn,
-  VersionColumn,
   Column,
+  CreateDateColumn,
+  DeleteDateColumn,
+  PrimaryGeneratedColumn,
+  UpdateDateColumn,
+  VersionColumn,
 } from 'typeorm';
 
 export abstract class BaseOrmEntity {
@@ -20,7 +20,7 @@ export abstract class BaseOrmEntity {
   @DeleteDateColumn({ name: 'deleted_at', type: 'timestamptz', nullable: true })
   deletedAt?: Date;
 
-  @VersionColumn({ default: 1 })
+  @VersionColumn({ name: 'version', default: 1 })
   version: number;
 
   @Column({ name: 'tenant_id', type: 'varchar', nullable: true })

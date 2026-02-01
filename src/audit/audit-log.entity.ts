@@ -16,12 +16,15 @@ export class AuditLogEntity {
   @Column()
   action: string;
 
-  @Column({ nullable: true })
-  ip: string;
+  @Column({ type: 'inet', nullable: true })
+  ip: string | null;
 
   @Column({ type: 'jsonb', nullable: true })
   payload: unknown;
 
-  @CreateDateColumn({ name: 'created_at' })
+  @Column({ name: 'event_timestamp', type: 'timestamp with time zone' })
   timestamp: Date;
+
+  @CreateDateColumn({ name: 'created_at' })
+  createdAt: Date;
 }

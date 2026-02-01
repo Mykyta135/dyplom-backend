@@ -16,8 +16,11 @@ export const databaseConfig = registerAs('database', () => ({
     // 1. Connection Pool Tuning: Keep enough warm connections but don't bloat
     max: parseInt(process.env.DB_POOL_MAX ?? '30', 10),
     min: parseInt(process.env.DB_POOL_MIN ?? '10', 10),
-    idleTimeoutMillis: 10000, // Close idle connections after 10s
-    connectionTimeoutMillis: 5000, // Fail fast if we can't get a connection
+    idleTimeoutMillis: parseInt(process.env.DB_IDLE_TIMEOUT ?? '10000', 10),
+    connectionTimeoutMillis: parseInt(
+      process.env.DB_CONN_TIMEOUT ?? '5000',
+      10,
+    ),
 
     // 2. Performance & Resilience Tuning
     statement_timeout: 10000, // Kill queries taking > 10s
@@ -38,7 +41,14 @@ export const databaseConfig = registerAs('database', () => ({
   maxQueryExecutionTime: 2000, // Highlight queries slower than 2 seconds
 
   // 5. SSL (Crucial for Production/Cloud DBs)
-  ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: false } : false,
+  ssl:
+    process.env.DB_SSL === 'true'
+      ? {
+          rejectUnauthorized:
+            process.env.DB_SSL_REJECT_UNAUTHORIZED !== 'false',
+          ca: process.env.DB_SSL_CA ?? undefined,
+        }
+      : false,
 }));
 
 export const databaseSchema = {
@@ -49,9 +59,11 @@ export const databaseSchema = {
   DB_DATABASE: Joi.string().required(),
   DB_RETRY_ATTEMPTS: Joi.number().default(5),
   DB_RETRY_DELAY: Joi.number().default(3000),
-  DB_SSL: Joi.boolean().default(false),
+  DB_SSL: Joi.string().valid('true', 'false').default('false'),
   DB_POOL_MAX: Joi.number().default(30),
   DB_POOL_MIN: Joi.number().default(10),
+  DB_IDLE_TIMEOUT: Joi.number().default(10000),
+  DB_CONN_TIMEOUT: Joi.number().default(5000),
 };
 
 export const redisSchema = {

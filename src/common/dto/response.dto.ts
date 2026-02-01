@@ -1,5 +1,7 @@
 // File: backend/src/common/dto/response.dto.ts
 
+import { BadRequestException } from '@nestjs/common';
+
 export class PaginationMetaDto {
   readonly page: number;
   readonly take: number;
@@ -9,6 +11,12 @@ export class PaginationMetaDto {
   readonly hasNextPage: boolean;
 
   constructor(page: number, take: number, itemCount: number) {
+    if (take <= 0) {
+      throw new BadRequestException('take must be greater than 0');
+    }
+    if (page <= 0) {
+      throw new BadRequestException('page must be greater than 0');
+    }
     this.page = page;
     this.take = take;
     this.itemCount = itemCount;

@@ -1,58 +1,71 @@
-import {
-  Body,
-  Controller,
-  Get,
-  InternalServerErrorException,
-  Post,
-  Query,
-} from '@nestjs/common';
-import { ApiExcludeController } from '@nestjs/swagger';
-import { Exclude } from 'class-transformer';
-class TestResponseDto {
-  message: string;
+// import {
+//   Body,
+//   CanActivate,
+//   Controller,
+//   Get,
+//   Injectable,
+//   InternalServerErrorException,
+//   NotFoundException,
+//   Post,
+//   Query,
+//   UseGuards,
+// } from '@nestjs/common';
+// import { ApiExcludeController } from '@nestjs/swagger';
+// import { Exclude } from 'class-transformer';
 
-  @Exclude() // This tells the interceptor to REMOVE this field
-  internalSecret: string;
+// @Injectable()
+// export class NonProductionGuard implements CanActivate {
+//   canActivate(): boolean {
+//     const isProduction = process.env.NODE_ENV === 'production';
+//     if (isProduction) {
+//       throw new NotFoundException();
+//     }
+//     return true;
+//   }
+// }
 
-  constructor(partial: Partial<TestResponseDto>) {
-    Object.assign(this, partial);
-  }
-}
-@ApiExcludeController() // Keep this out of your public API docs
-@Controller('dev/test')
-export class InfrastructureTestController {
-  // 1. Test Transform & NullStripper & ClassSerializer
-  @Get('transform')
-  testTransform() {
-    return new TestResponseDto({
-      message: 'Now the secret should be gone!',
-      internalSecret: 'HIDDEN_DATA',
-    });
-  }
+// class TestResponseDto {
+//   message: string;
 
-  // 2. Test TimeoutInterceptor
-  @Get('timeout')
-  async testTimeout() {
-    // Wait 6 seconds (1s longer than our 5s timeout)
-    await new Promise((resolve) => setTimeout(resolve, 6000));
-    return { message: 'This will never be reached' };
-  }
+//   @Exclude()
+//   internalSecret: string;
 
-  // 3. Test CircuitBreaker & ExceptionFilter
-  @Get('circuit-breaker')
-  testCircuit(@Query('fail') fail: string) {
-    if (fail === 'true') {
-      throw new InternalServerErrorException('Simulated Failure');
-    }
-    return { status: 'System is healthy' };
-  }
+//   constructor(partial: Partial<TestResponseDto>) {
+//     Object.assign(this, partial);
+//   }
+// }
 
-  @Post('sanitize-test')
-  testSanitization(@Body() body: Record<string, unknown>) {
-    // If the interceptor works, the <script> will be GONE before it gets here
-    return {
-      receivedBody: body,
-      message: 'Check your terminal to see if the script was neutralized!',
-    };
-  }
-}
+// @ApiExcludeController()
+// @Controller('dev/test')
+// @UseGuards(NonProductionGuard)
+// export class InfrastructureTestController {
+//   @Get('transform')
+//   testTransform() {
+//     return new TestResponseDto({
+//       message: 'Now the secret should be gone!',
+//       internalSecret: 'HIDDEN_DATA',
+//     });
+//   }
+
+//   @Get('timeout')
+//   async testTimeout() {
+//     await new Promise((resolve) => setTimeout(resolve, 6000));
+//     return { message: 'This will never be reached' };
+//   }
+
+//   @Get('circuit-breaker')
+//   testCircuit(@Query('fail') fail: string) {
+//     if (fail === 'true') {
+//       throw new InternalServerErrorException('Simulated Failure');
+//     }
+//     return { status: 'System is healthy' };
+//   }
+
+//   @Post('sanitize-test')
+//   testSanitization(@Body() body: Record<string, unknown>) {
+//     return {
+//       receivedBody: body,
+//       message: 'Check your terminal to see if the script was neutralized!',
+//     };
+//   }
+// }

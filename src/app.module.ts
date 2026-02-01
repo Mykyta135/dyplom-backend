@@ -18,37 +18,15 @@ import {
 
 import { PrometheusModule } from '@willsoto/nestjs-prometheus';
 import { AcceptLanguageResolver, I18nModule, QueryResolver } from 'nestjs-i18n';
-import path from 'path';
-import { CoreModule } from './core/core.module';
-import { HealthModule } from './health/health.module';
+import * as path from 'path';
 import { AuditModule } from './audit/audit.module';
+import { CoreModule, HttpCoreModule } from './core/core.module';
+import { HealthModule } from './health/health.module';
+
+const isWorker = process.env.APP_MODE === 'WORKER';
 
 @Module({
   imports: [
-    I18nModule.forRoot({
-      fallbackLanguage: 'en',
-      loaderOptions: {
-        path: path.join(__dirname, '/i18n/'), // This is correct
-        watch: true,
-      },
-      resolvers: [
-        { use: QueryResolver, options: ['lang'] },
-        AcceptLanguageResolver,
-      ],
-    }),
-    CacheModule.registerAsync({
-      isGlobal: true,
-      useFactory: async () => ({
-        store: await redisStore({
-          socket: { host: process.env.REDIS_HOST ?? 'localhost', port: 6379 },
-          ttl: 600,
-        }),
-      }),
-    }),
-    PrometheusModule.register({
-      path: '/metrics',
-      defaultMetrics: { enabled: true },
-    }),
     ConfigModule.forRoot({
       isGlobal: true,
       load: [appConfig, databaseConfig, authConfig, redisConfig],
@@ -59,7 +37,6 @@ import { AuditModule } from './audit/audit.module';
         ...redisSchema,
       }),
     }),
-
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
       inject: [databaseConfig.KEY],
@@ -77,10 +54,41 @@ import { AuditModule } from './audit/audit.module';
         migrations: ['dist/migrations/*{.ts,.js}'],
       }),
     }),
-
     CoreModule,
+
+    ...(isWorker ? [] : [HttpCoreModule]),
+
     HealthModule,
     AuditModule,
+
+    ...(isWorker
+      ? []
+      : [
+          I18nModule.forRoot({
+            fallbackLanguage: 'en',
+            loaderOptions: {
+              path: path.join(__dirname, '/i18n/'),
+              watch: true,
+            },
+            resolvers: [
+              { use: QueryResolver, options: ['lang'] },
+              AcceptLanguageResolver,
+            ],
+          }),
+        ]),
+    CacheModule.registerAsync({
+      isGlobal: true,
+      imports: [ConfigModule],
+      inject: [redisConfig.KEY],
+      useFactory: async (config: ConfigType<typeof redisConfig>) => ({
+        store: await redisStore({
+          socket: { host: config.host, port: config.port },
+          ttl: 600,
+        }),
+      }),
+    }),
+
+    ...(isWorker ? [] : [PrometheusModule.register({ path: '/metrics' })]),
   ],
   controllers: [AppController],
   providers: [AppService],
