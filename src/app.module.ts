@@ -61,17 +61,21 @@ const isWorker = process.env.APP_MODE === 'WORKER';
     HealthModule,
     AuditModule,
 
-    I18nModule.forRoot({
-      fallbackLanguage: 'en',
-      loaderOptions: {
-        path: path.join(__dirname, '/i18n/'), // This is correct
-        watch: true,
-      },
-      resolvers: [
-        { use: QueryResolver, options: ['lang'] },
-        AcceptLanguageResolver,
-      ],
-    }),
+    ...(isWorker
+      ? []
+      : [
+          I18nModule.forRoot({
+            fallbackLanguage: 'en',
+            loaderOptions: {
+              path: path.join(__dirname, '/i18n/'),
+              watch: true,
+            },
+            resolvers: [
+              { use: QueryResolver, options: ['lang'] },
+              AcceptLanguageResolver,
+            ],
+          }),
+        ]),
     CacheModule.registerAsync({
       isGlobal: true,
       imports: [ConfigModule],

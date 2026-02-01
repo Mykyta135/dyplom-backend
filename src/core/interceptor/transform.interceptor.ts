@@ -51,10 +51,16 @@ export class TransformInterceptor<T> implements NestInterceptor<
 
     const candidate = result as Record<string, unknown>;
 
+    if (!('data' in candidate) || !Array.isArray(candidate.data)) {
+      return false;
+    }
+
+    const meta = candidate.meta as Record<string, unknown> | undefined;
     return (
-      'data' in candidate &&
-      'meta' in candidate &&
-      Array.isArray(candidate.data)
+      typeof meta === 'object' &&
+      'page' in meta &&
+      'take' in meta &&
+      'itemCount' in meta
     );
   }
 }

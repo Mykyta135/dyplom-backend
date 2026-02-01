@@ -8,12 +8,12 @@ export class TenantMiddleware implements NestMiddleware {
 
   async use(req: Request, res: Response, next: NextFunction) {
     const tenantId = req.headers['x-tenant-id'];
-    if (tenantId && typeof tenantId === 'string') {
-      const uuidRegex =
-        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-      if (uuidRegex.test(tenantId)) {
-        await this.dataSource.query(`SET app.current_tenant = $1`, [tenantId]);
-      }
+    const uuidRegex =
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (typeof tenantId === 'string' && uuidRegex.test(tenantId)) {
+      await this.dataSource.query(`SET app.current_tenant = $1`, [tenantId]);
+    } else {
+      await this.dataSource.query(`RESET app.current_tenant`);
     }
     next();
   }

@@ -6,8 +6,19 @@ import {
 } from 'jaeger-client';
 
 // Parse environment variables with defaults suitable for development
-const samplerType = process.env.JAEGER_SAMPLER_TYPE ?? 'const';
-const samplerParam = Number(process.env.JAEGER_SAMPLER_PARAM ?? 1);
+const samplerTypeEnv = process.env.JAEGER_SAMPLER_TYPE;
+const samplerType =
+  samplerTypeEnv &&
+  ['const', 'probabilistic', 'ratelimiting', 'remote'].includes(samplerTypeEnv)
+    ? samplerTypeEnv
+    : 'const';
+
+const samplerParamEnv = process.env.JAEGER_SAMPLER_PARAM;
+const parsedSamplerParam =
+  samplerParamEnv === undefined ? 1 : Number(samplerParamEnv);
+const samplerParam = Number.isFinite(parsedSamplerParam)
+  ? parsedSamplerParam
+  : 1;
 const logSpans = process.env.JAEGER_LOG_SPANS === 'true'; // Default to false in prod usually
 
 const config: TracingConfig = {

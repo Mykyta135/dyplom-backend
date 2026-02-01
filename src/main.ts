@@ -19,13 +19,14 @@ async function bootstrap() {
   if (appMode === 'WORKER') {
     logger.log(`👷 Starting application in WORKER mode...`);
 
+    const redisPort = parseInt(process.env.REDIS_PORT ?? '6379', 10);
     const app = await NestFactory.createMicroservice<MicroserviceOptions>(
       AppModule,
       {
         transport: Transport.REDIS,
         options: {
           host: process.env.REDIS_HOST ?? 'localhost',
-          port: Number(process.env.REDIS_PORT ?? 6379),
+          port: Number.isFinite(redisPort) ? redisPort : 6379,
         },
       },
     );

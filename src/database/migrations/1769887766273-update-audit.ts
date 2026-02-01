@@ -5,16 +5,22 @@ export class UpdateAudit1769887766273 implements MigrationInterface {
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(
-      `ALTER TABLE "audit_logs" ADD "event_timestamp" TIMESTAMP WITH TIME ZONE NOT NULL`,
+      `ALTER TABLE "audit_logs" ADD "event_timestamp" TIMESTAMPTZ`,
     );
-    await queryRunner.query(`ALTER TABLE "audit_logs" DROP COLUMN "ip"`);
-    await queryRunner.query(`ALTER TABLE "audit_logs" ADD "ip" inet`);
+    await queryRunner.query(
+      `UPDATE "audit_logs" SET "event_timestamp" = "timestamp" WHERE "event_timestamp" IS NULL`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "audit_logs" ALTER COLUMN "event_timestamp" SET NOT NULL`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "audit_logs" ALTER COLUMN "ip" TYPE inet USING "ip"::inet`,
+    );
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(`ALTER TABLE "audit_logs" DROP COLUMN "ip"`);
     await queryRunner.query(
-      `ALTER TABLE "audit_logs" ADD "ip" character varying`,
+      `ALTER TABLE "audit_logs" ALTER COLUMN "ip" TYPE character varying USING "ip"::text`,
     );
     await queryRunner.query(
       `ALTER TABLE "audit_logs" DROP COLUMN "event_timestamp"`,

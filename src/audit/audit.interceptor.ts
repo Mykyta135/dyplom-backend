@@ -53,10 +53,9 @@ export class AuditInterceptor implements NestInterceptor {
       const ipAddress = req.ip ?? req.socket.remoteAddress ?? 'unknown';
 
       const payload = pick(req.body, fieldsToLog);
-
       const event: AuditLogEvent = {
         trackingId: trackingId,
-        action: `${req.method} ${req.url}`,
+        action: `${req.method} ${req.path}`,
         ip: ipAddress,
         payload: payload,
         timestamp: new Date().toISOString(),
